@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:activiti="http://activiti.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.activiti.org/test">
+  <process id="easyProcess" name="简单流程" isExecutable="true">
+    <startEvent id="startevent" name="开始节点"></startEvent>
+    <userTask id="person01Task" name="任务节点01" activiti:assignee="guankai" activiti:formKey="person01Form"></userTask>
+    <userTask id="person02Task" name="任务节点02" activiti:assignee="guankai" activiti:formKey="person02Form"></userTask>
+    <endEvent id="endevent" name="结束节点"></endEvent>
+    <sequenceFlow id="flow1" sourceRef="startevent" targetRef="person01Task"></sequenceFlow>
+    <sequenceFlow id="flow2" sourceRef="person01Task" targetRef="person02Task"></sequenceFlow>
+    <sequenceFlow id="flow3" sourceRef="person02Task" targetRef="endevent"></sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_easyProcess">
+    <bpmndi:BPMNPlane bpmnElement="easyProcess" id="BPMNPlane_easyProcess">
+      <bpmndi:BPMNShape bpmnElement="startevent" id="BPMNShape_startevent">
+        <omgdc:Bounds height="35.0" width="35.0" x="70.0" y="240.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="person01Task" id="BPMNShape_person01Task">
+        <omgdc:Bounds height="55.0" width="105.0" x="212.0" y="230.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="person02Task" id="BPMNShape_person02Task">
+        <omgdc:Bounds height="55.0" width="105.0" x="453.0" y="230.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="endevent" id="BPMNShape_endevent">
+        <omgdc:Bounds height="35.0" width="35.0" x="660.0" y="240.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="flow1" id="BPMNEdge_flow1">
+        <omgdi:waypoint x="105.0" y="257.0"></omgdi:waypoint>
+        <omgdi:waypoint x="212.0" y="257.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow2" id="BPMNEdge_flow2">
+        <omgdi:waypoint x="317.0" y="257.0"></omgdi:waypoint>
+        <omgdi:waypoint x="453.0" y="257.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="flow3" id="BPMNEdge_flow3">
+        <omgdi:waypoint x="558.0" y="257.0"></omgdi:waypoint>
+        <omgdi:waypoint x="660.0" y="257.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

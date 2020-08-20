@@ -1,13 +1,11 @@
 package com.guankai.activitidemo.service.impl;
 
 import com.guankai.activitidemo.service.IProcessDefinitionService;
-import org.activiti.engine.*;
+import com.guankai.activitidemo.vo.ProcessDefinitionVo;
+import org.activiti.engine.ProcessEngines;
+import org.activiti.engine.RepositoryService;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.ProcessDefinition;
-import org.activiti.engine.repository.ProcessDefinitionQuery;
-import org.activiti.engine.runtime.ProcessInstance;
-import org.activiti.engine.task.Task;
-import org.activiti.engine.task.TaskQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,9 +15,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 流程定义、部署
@@ -39,32 +36,50 @@ public class ProcessDefinitionServiceImpl implements IProcessDefinitionService {
      * @param file 流程文件
      * @author guan.kai
      * @date 2020/8/16
-     * @return 部署对象信息
+     * @return
      **/
     @Override
     public ProcessDefinition deployProcess(File file) {
         try(InputStream inputStream = new FileInputStream(file)) {
             String filename = file.getName();
-            //1.获取processEngine（activiti核心的API）
-            ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
-            //2.获取repositoryService对象（管理流程部署及定义）
-            RepositoryService repositoryService = processEngine.getRepositoryService();
-            //3.部署
-            Deployment deployment = repositoryService.createDeployment().addInputStream(filename,inputStream).deploy();
-
-            //查询刚部署的最新版本流程定义信息
-            ProcessDefinitionQuery query = repositoryService.createProcessDefinitionQuery();
-            //添加查询条件，KEY
-            query.deploymentId(deployment.getId());
-            //最新版本过滤
-            query.latestVersion();
-            //查询
-            return query.singleResult();
+            RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
+            //部署
+            Deployment deployment = repositoryService.createDeployment().addInputStream(filename, inputStream).deploy();
+            return repositoryService.createProcessDefinitionQuery().deploymentId(deployment.getId()).singleResult();
         } catch (IOException e) {
             LOG.error(e.getMessage(),e);
             return null;
         }
     }
 
-
+    /**
+     * 查询以部署流程列表信息
+     *
+     * @author guankai
+     * @date 2020/8/18
+     * @return
+     **/
+    @Override
+    public List<ProcessDefinitionVo> getProcessDefinitionList() {
+        RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
+        List<ProcessDefinition> processDefinitions = repositoryService.createProcessDefinitionQuery()
+                .latestVersion()
+                .orderByProcessDefinitionId()
+                .asc()
+                .list();
+        if (processDefinitions.isEmpty()){
+            return null;
+        }
+        List<ProcessDefinitionVo> voList = new ArrayList<>(processDefinitions.size());
+        processDefinitions.forEach(processDefinition -> {
+            ProcessDefinitionVo vo = new ProcessDefinitionVo();
+            vo.setId(processDefinition.getId());
+            vo.setName(processDefinition.getName());
+            vo.setKey(processDefinition.getKey());
+            vo.setResourceName(processDefinition.getResourceName());
+            vo.setVersion(processDefinition.getVersion());
+            voList.add(vo);
+        });
+        return voList;
+    }
 }

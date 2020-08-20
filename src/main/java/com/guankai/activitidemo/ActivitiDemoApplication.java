@@ -3,6 +3,13 @@ package com.guankai.activitidemo;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+/**
+ * 启动类
+ * 去除activiti自带安全认证框架
+ *
+ * @author guankai
+ * @date 2020/8/16
+ */
 @SpringBootApplication(
         exclude = {
                 org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration.class,
