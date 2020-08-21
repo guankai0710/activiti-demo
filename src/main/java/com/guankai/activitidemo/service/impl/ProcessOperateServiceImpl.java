@@ -1,11 +1,10 @@
 package com.guankai.activitidemo.service.impl;
 
-import com.alibaba.fastjson.JSON;
 import com.guankai.activitidemo.service.IProcessOperateService;
 import com.guankai.activitidemo.vo.JsonResult;
 import com.guankai.activitidemo.vo.ProcessInstanceVo;
 import com.guankai.activitidemo.vo.TaskVo;
-import org.activiti.bpmn.model.*;
+import org.activiti.bpmn.model.BpmnModel;
 import org.activiti.engine.*;
 import org.activiti.engine.history.HistoricProcessInstance;
 import org.activiti.engine.history.HistoricProcessInstanceQuery;
@@ -26,7 +25,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 类描述：流程操作接口
@@ -44,23 +46,23 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
     /**
      * 根据流程key启动流程
      *
-     * @param processKey 流程key
+     * @param processDefinitionId 流程定义id
      * @param businessKey 业务编号
+     * @param userId 流程发起者
+     * @param variables 流程变量
      * @author guan.kai
      * @date 2020/8/17
      * @return
      **/
     @Override
-    public ProcessInstanceVo startProcessByKey(String processKey, String businessKey) {
-        //RuntimeService：执行管理，包括启动，查询，删除流程定义
+    public ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String userId, Map<String,Object> variables) {
         RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
-        //设置流程变量
-        Map<String,Object> map = new HashMap<>(16);
-        map.put("status",1);
-        //设置流程发起者信息（一般是当前用户id或者用户名等唯一标识）
-        Authentication.setAuthenticatedUserId("ceshi");
+        if (StringUtils.isNotBlank(userId)){
+            //设置流程发起者信息（一般是当前用户id或者用户名等唯一标识）
+            Authentication.setAuthenticatedUserId(userId);
+        }
         //启动流程，返回流程实例信息
-        ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(processKey,businessKey,map);
+        ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefinitionId,businessKey,variables);
         //设置流程实例名称
         runtimeService.setProcessInstanceName(processInstance.getId(),"实例名称");
         LOG.info("启动流程 -> 流程key：{}，流程名称：{}，业务编号：{}，实例id：{}"
@@ -73,15 +75,15 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * 获取所有未完结流程列表
      * 当userId为空时查询所有
      *
-     * @param runtimeService
      * @param userId 流程发起人
      * @auhor guankai
      * @date 2020/8/18
      * @return
      **/
     @Override
-    public List<ProcessInstanceVo> getUnFinishedProcessList(RuntimeService runtimeService,String userId) {
+    public List<ProcessInstanceVo> getUnFinishedProcessList(String userId) {
         List<ProcessInstanceVo> voList = new ArrayList<>();
+        RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
         ProcessInstanceQuery query = runtimeService.createProcessInstanceQuery();
         if (StringUtils.isNotBlank(userId)){
             query = query.startedBy(userId);
@@ -98,15 +100,15 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * 获取已完结流程列表
      * 当userId为空时查询所有
      *
-     * @param historyService 历史信息接口
      * @param userId 流程发起人
      * @author guankai
      * @date 2020/8/18
      * @return
      **/
     @Override
-    public List<ProcessInstanceVo> getFinishedProcessList(HistoryService historyService,String userId) {
+    public List<ProcessInstanceVo> getFinishedProcessList(String userId) {
         List<ProcessInstanceVo> voList = new ArrayList<>();
+        HistoryService historyService = ProcessEngines.getDefaultProcessEngine().getHistoryService();
         HistoricProcessInstanceQuery query = historyService.createHistoricProcessInstanceQuery();
         if (StringUtils.isNotBlank(userId)){
             query = query.startedBy(userId);
@@ -148,13 +150,13 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * 根据处理人获取待办任务列表
      *
      * @param assignee 处理人
-     * @param taskService 待办任务处理接口
      * @author guankai
      * @date 2020/8/17
      * @return
      **/
     @Override
-    public List<TaskVo> getUpComingTaskList(String assignee,TaskService taskService) {
+    public List<TaskVo> getUpComingTaskList(String assignee) {
+        TaskService taskService = ProcessEngines.getDefaultProcessEngine().getTaskService();
         List<Task> taskList = taskService.createTaskQuery()
                 .taskAssignee(assignee)
                 .orderByTaskCreateTime()
@@ -172,13 +174,13 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * 根据处理人获取已办任务列表
      *
      * @param assignee 处理人
-     * @param historyService 历史信息接口
      * @author guankai
      * @date 2020/8/17
      * @return
      **/
     @Override
-    public List<TaskVo> getDoneTaskList(String assignee,HistoryService historyService) {
+    public List<TaskVo> getDoneTaskList(String assignee) {
+        HistoryService historyService = ProcessEngines.getDefaultProcessEngine().getHistoryService();
         List<HistoricTaskInstance> taskInstanceList = historyService.createHistoricTaskInstanceQuery()
                 .finished()
                 .taskAssignee(assignee)
@@ -203,13 +205,13 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * 根据流程定义id获取当前活跃节点
      *
      * @param processInstanceId 流程定义id
-     * @param taskService 待办任务处理接口
      * @author guankai
      * @date 2020/8/17
      * @return
      **/
     @Override
-    public Task getCurrentTaskByProcessInstanceId(String processInstanceId,TaskService taskService) {
+    public Task getCurrentTaskByProcessInstanceId(String processInstanceId) {
+        TaskService taskService = ProcessEngines.getDefaultProcessEngine().getTaskService();
         return taskService.createTaskQuery().processInstanceId(processInstanceId).active().singleResult();
     }
 
@@ -217,13 +219,13 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * 获取上一个节点的信息
      *
      * @param processInstanceId 流程实例id
-     * @param historyService 历史信息接口
      * @author guankai
      * @date 2020/8/17
      * @return
      **/
     @Override
-    public HistoricTaskInstance getUpOneTask(String processInstanceId,HistoryService historyService) {
+    public HistoricTaskInstance getUpOneTask(String processInstanceId) {
+        HistoryService historyService = ProcessEngines.getDefaultProcessEngine().getHistoryService();
         List<HistoricTaskInstance> list = historyService.createHistoricTaskInstanceQuery()
                 .finished()
                 .processInstanceId(processInstanceId)
@@ -236,20 +238,17 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
     /**
      * 处理流程
      *
-     * @param processInstanceId 流程实例id
+     * @param taskId 任务id
+     * @param variables 流程变量(作用范围,整个流程)
+     * @param variablesLocal 节点变量(作用范围,当前节点)
      * @author guankai
      * @date 2020/8/18
      * @return
      **/
     @Override
-    public JsonResult handleTask(String processInstanceId, String taskId, String fromJson) {
-//        RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
+    public JsonResult handleTask(String taskId, Map<String,Object> variables, Map<String,Object> variablesLocal) {
         TaskService taskService = ProcessEngines.getDefaultProcessEngine().getTaskService();
-        //当前节点
-        Task currentTask = getCurrentTaskByProcessInstanceId(processInstanceId,taskService);
-        if (!taskId.equals(currentTask.getId())){
-            return JsonResult.failure("处理失败！");
-        }
+
 //        BpmnModel bpmnModel = repositoryService.getBpmnModel(currentTask.getProcessDefinitionId());
         //当前节点流信息
 //        UserTask userTask = (UserTask)bpmnModel.getFlowElement(currentTask.getTaskDefinitionKey());
@@ -265,10 +264,13 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
 //
 //            });
 //        }
-        Map<String,String> map = JSON.parseObject(fromJson, HashMap.class);
-        taskService.setVariablesLocal(currentTask.getId(),map);
-        taskService.complete(currentTask.getId());
-        LOG.info("任务已处理 -> 任务名称：{}，处理人：{}，流程实例id：{}",currentTask.getName(),currentTask.getAssignee(),currentTask.getProcessInstanceId());
+        if (!variables.isEmpty()){
+            taskService.setVariables(taskId,variables);
+        }
+        if (!variablesLocal.isEmpty()){
+            taskService.setVariablesLocal(taskId,variablesLocal);
+        }
+        taskService.complete(taskId);
         return JsonResult.sucess("处理成功！",null);
     }
 
@@ -327,10 +329,12 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
 
     /**
      * 返回流程图
+     *
      * @param processInstanceId 流程实例id
      * @param highlight 是否高亮显示
      * @return
      */
+    @Override
     public InputStream queryProHighLighted(String processInstanceId,boolean highlight) {
         RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
         RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();

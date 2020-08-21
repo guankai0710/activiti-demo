@@ -1,7 +1,6 @@
 package com.guankai.activitidemo.service;
 
 import com.guankai.activitidemo.vo.ProcessDefinitionVo;
-import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.ProcessDefinition;
 
 import java.io.File;
