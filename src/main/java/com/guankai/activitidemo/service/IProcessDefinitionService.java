@@ -1,7 +1,6 @@
 package com.guankai.activitidemo.service;
 
 import com.guankai.activitidemo.vo.ProcessDefinitionVo;
-import org.activiti.engine.repository.ProcessDefinition;
 
 import java.io.File;
 import java.util.List;
@@ -22,7 +21,7 @@ public interface IProcessDefinitionService {
      * @date 2020/8/18
      * @return
      **/
-    ProcessDefinition deployProcess(File file);
+    ProcessDefinitionVo deployProcess(File file);
 
     /**
      * 查询以部署流程列表信息
@@ -32,5 +31,12 @@ public interface IProcessDefinitionService {
      * @return
      **/
     List<ProcessDefinitionVo> getProcessDefinitionList();
+
+    /**
+     * 查询流程部署信息
+     * @param processDefinitionId
+     * @return
+     */
+    ProcessDefinitionVo getByProcessDefinitionId(String processDefinitionId);
 
 }

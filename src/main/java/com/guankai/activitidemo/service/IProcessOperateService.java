@@ -1,11 +1,11 @@
 package com.guankai.activitidemo.service;
 
-import com.guankai.activitidemo.vo.JsonResult;
 import com.guankai.activitidemo.vo.ProcessInstanceVo;
 import com.guankai.activitidemo.vo.TaskVo;
 import org.activiti.engine.history.HistoricTaskInstance;
 import org.activiti.engine.task.Task;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
@@ -23,13 +23,13 @@ public interface IProcessOperateService {
      *
      * @param processDefinitionId 流程定义id
      * @param businessKey 业务编号
-     * @param userId 流程发起者
+     * @param startUserId 流程发起者
      * @param variables 流程变量
      * @author guan.kai
      * @date 2020/8/17
      * @return
      **/
-    ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String userId, Map<String,Object> variables);
+    ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String businessName, String startUserId,  Map<String,Object> variables);
 
     /**
      * 获取未完结流程列表
@@ -104,14 +104,13 @@ public interface IProcessOperateService {
      * @date 2020/8/18
      * @return
      **/
-    JsonResult handleTask(String taskId, Map<String,Object> variables, Map<String,Object> variablesLocal);
+    void handleTask(String taskId, Map<String,Object> variables, Map<String,Object> variablesLocal);
 
     /**
      * 返回流程图
      *
      * @param processInstanceId 流程实例id
-     * @param highlight 是否高亮显示
      * @return
      */
-    InputStream queryProHighLighted(String processInstanceId, boolean highlight);
+    InputStream queryProHighLighted(String processInstanceId) throws IOException;
 }

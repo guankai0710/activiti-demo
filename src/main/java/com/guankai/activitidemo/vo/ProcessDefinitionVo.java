@@ -23,6 +23,9 @@ public class ProcessDefinitionVo {
     /** 版本号 */
     private Integer version;
 
+    /** 开始节点表单 */
+    private String startFormKey;
+
     public ProcessDefinitionVo() {
     }
 
@@ -64,5 +67,13 @@ public class ProcessDefinitionVo {
 
     public void setVersion(Integer version) {
         this.version = version;
+    }
+
+    public String getStartFormKey() {
+        return startFormKey;
+    }
+
+    public void setStartFormKey(String startFormKey) {
+        this.startFormKey = startFormKey;
     }
 }

@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.guankai.activitidemo.dao.ActFromTemplateDao">
+  <resultMap id="BaseResultMap" type="com.guankai.activitidemo.entity.ActFromTemplate">
+    <id column="ID" jdbcType="INTEGER" property="id" />
+    <result column="FROM_KEY" jdbcType="VARCHAR" property="fromKey" />
+    <result column="TEMP_TYPE" jdbcType="INTEGER" property="tempType" />
+    <result column="FROM_TEMP" jdbcType="VARCHAR" property="fromTemp" />
+    <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+    <result column="UPDATE_TIME" jdbcType="TIMESTAMP" property="updateTime" />
+    <result column="DELETED" jdbcType="INTEGER" property="deleted" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    ID, FROM_KEY, TEMP_TYPE, FROM_TEMP, CREATE_TIME, UPDATE_TIME, DELETED
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from ACT_FROM_TEMPLATE
+    where ID = #{id,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from ACT_FROM_TEMPLATE
+    where ID = #{id,jdbcType=INTEGER}
+  </delete>
+  <insert id="insert" keyColumn="ID" keyProperty="id" parameterType="com.guankai.activitidemo.entity.ActFromTemplate" useGeneratedKeys="true">
+    insert into ACT_FROM_TEMPLATE (FROM_KEY, TEMP_TYPE, FROM_TEMP, 
+      CREATE_TIME, UPDATE_TIME, DELETED
+      )
+    values (#{fromKey,jdbcType=VARCHAR}, #{tempType,jdbcType=INTEGER}, #{fromTemp,jdbcType=VARCHAR}, 
+      #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP}, #{deleted,jdbcType=INTEGER}
+      )
+  </insert>
+  <insert id="insertSelective" keyColumn="ID" keyProperty="id" parameterType="com.guankai.activitidemo.entity.ActFromTemplate" useGeneratedKeys="true">
+    insert into ACT_FROM_TEMPLATE
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="fromKey != null">
+        FROM_KEY,
+      </if>
+      <if test="tempType != null">
+        TEMP_TYPE,
+      </if>
+      <if test="fromTemp != null">
+        FROM_TEMP,
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME,
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME,
+      </if>
+      <if test="deleted != null">
+        DELETED,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="fromKey != null">
+        #{fromKey,jdbcType=VARCHAR},
+      </if>
+      <if test="tempType != null">
+        #{tempType,jdbcType=INTEGER},
+      </if>
+      <if test="fromTemp != null">
+        #{fromTemp,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateTime != null">
+        #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="deleted != null">
+        #{deleted,jdbcType=INTEGER},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.guankai.activitidemo.entity.ActFromTemplate">
+    update ACT_FROM_TEMPLATE
+    <set>
+      <if test="fromKey != null">
+        FROM_KEY = #{fromKey,jdbcType=VARCHAR},
+      </if>
+      <if test="tempType != null">
+        TEMP_TYPE = #{tempType,jdbcType=INTEGER},
+      </if>
+      <if test="fromTemp != null">
+        FROM_TEMP = #{fromTemp,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="updateTime != null">
+        UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      </if>
+      <if test="deleted != null">
+        DELETED = #{deleted,jdbcType=INTEGER},
+      </if>
+    </set>
+    where ID = #{id,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.guankai.activitidemo.entity.ActFromTemplate">
+    update ACT_FROM_TEMPLATE
+    set FROM_KEY = #{fromKey,jdbcType=VARCHAR},
+      TEMP_TYPE = #{tempType,jdbcType=INTEGER},
+      FROM_TEMP = #{fromTemp,jdbcType=VARCHAR},
+      CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      UPDATE_TIME = #{updateTime,jdbcType=TIMESTAMP},
+      DELETED = #{deleted,jdbcType=INTEGER}
+    where ID = #{id,jdbcType=INTEGER}
+  </update>
+</mapper>

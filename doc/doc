@@ -68,3 +68,29 @@ act_hi_varinst :                历史变量表
 act_evt_log :                   流程引擎的通用事件日志记录表
 act_procdef_info :              流程定义的动态变更信息
 
+
+
+activiti流程图绘制约定：
+1、当前仅支持 StarTevent（开始节点）、EndStart（结束节点）、UserTask（任务节点）、ExclusiveGateway（排他网关节点）。
+2、如遇分叉流程，必须使用 ExclusiveGateway（排他网关节点）进行条件判断。
+3、StartEvent（开始节点）整个流程有且只有一个，同时 id参数约定为 startevent 不可更改。
+3、EndStart（结束节点）整个流程有且只有一个，同时 id参数约定为 endstart 不可更改。
+4、ExclusiveGateway（排他网关节点）的条件参数必须为上一 UserTask（任务节点）表单中已有的参数。
+5、Process.Id 约定与流程文件名一致不可更改。
+6、UserTask（任务节点）的 assignee（处理人参数）统一填写 ${userId} 不可更改。
+7、所有表单中，指定下一处理人变量名统一定义为 userId 不可更改。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

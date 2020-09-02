@@ -2,10 +2,14 @@ package com.guankai.activitidemo.service.impl;
 
 import com.guankai.activitidemo.service.IProcessDefinitionService;
 import com.guankai.activitidemo.vo.ProcessDefinitionVo;
+import org.activiti.bpmn.model.BpmnModel;
+import org.activiti.bpmn.model.FlowElement;
+import org.activiti.bpmn.model.StartEvent;
 import org.activiti.engine.ProcessEngines;
 import org.activiti.engine.RepositoryService;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.ProcessDefinition;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 流程定义、部署
@@ -25,7 +30,6 @@ import java.util.List;
  * @date 2020/8/16 17:00
  **/
 @Service
-@Transactional(rollbackFor = Exception.class)
 public class ProcessDefinitionServiceImpl implements IProcessDefinitionService {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessDefinitionServiceImpl.class);
 
@@ -39,13 +43,15 @@ public class ProcessDefinitionServiceImpl implements IProcessDefinitionService {
      * @return
      **/
     @Override
-    public ProcessDefinition deployProcess(File file) {
+    @Transactional(rollbackFor = Exception.class)
+    public ProcessDefinitionVo deployProcess(File file) {
         try(InputStream inputStream = new FileInputStream(file)) {
             String filename = file.getName();
             RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
             //部署
             Deployment deployment = repositoryService.createDeployment().addInputStream(filename, inputStream).deploy();
-            return repositoryService.createProcessDefinitionQuery().deploymentId(deployment.getId()).singleResult();
+            ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().deploymentId(deployment.getId()).singleResult();
+            return processDefinitionToVo(processDefinition,repositoryService.getBpmnModel(processDefinition.getId()));
         } catch (IOException e) {
             LOG.error(e.getMessage(),e);
             return null;
@@ -67,19 +73,39 @@ public class ProcessDefinitionServiceImpl implements IProcessDefinitionService {
                 .orderByProcessDefinitionId()
                 .asc()
                 .list();
-        if (processDefinitions.isEmpty()){
+        if (processDefinitions == null || processDefinitions.isEmpty()){
             return null;
         }
         List<ProcessDefinitionVo> voList = new ArrayList<>(processDefinitions.size());
-        processDefinitions.forEach(processDefinition -> {
-            ProcessDefinitionVo vo = new ProcessDefinitionVo();
-            vo.setId(processDefinition.getId());
-            vo.setName(processDefinition.getName());
-            vo.setKey(processDefinition.getKey());
-            vo.setResourceName(processDefinition.getResourceName());
-            vo.setVersion(processDefinition.getVersion());
-            voList.add(vo);
-        });
+        processDefinitions.forEach(processDefinition -> voList.add(processDefinitionToVo(processDefinition,repositoryService.getBpmnModel(processDefinition.getId()))));
         return voList;
+    }
+
+    private ProcessDefinitionVo processDefinitionToVo(ProcessDefinition processDefinition,BpmnModel bpmnModel){
+        ProcessDefinitionVo vo = new ProcessDefinitionVo();
+        vo.setId(processDefinition.getId());
+        vo.setName(processDefinition.getName());
+        vo.setKey(processDefinition.getKey());
+        vo.setResourceName(processDefinition.getResourceName());
+        vo.setVersion(processDefinition.getVersion());
+        Map<String, FlowElement> flowElementMap = bpmnModel.getProcessById(processDefinition.getKey()).getFlowElementMap();
+        StartEvent startevent = (StartEvent)flowElementMap.get("startevent");
+        String formKey = startevent.getFormKey();
+        if (StringUtils.isNotBlank(formKey)){
+            vo.setStartFormKey(formKey);
+        }
+        return vo;
+    }
+
+    /**
+     * 查询流程部署信息
+     * @param processDefinitionId
+     * @return
+     */
+    @Override
+    public ProcessDefinitionVo getByProcessDefinitionId(String processDefinitionId) {
+        RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
+        ProcessDefinition processDefinition = repositoryService.createProcessDefinitionQuery().processDefinitionId(processDefinitionId).singleResult();
+        return processDefinitionToVo(processDefinition,repositoryService.getBpmnModel(processDefinition.getId()));
     }
 }

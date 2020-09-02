@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.guankai.activitidemo.dao.ActFromContentDao">
+  <resultMap id="BaseResultMap" type="com.guankai.activitidemo.entity.ActFromContent">
+    <id column="ID" jdbcType="INTEGER" property="id" />
+    <result column="PROC_INST_ID" jdbcType="VARCHAR" property="procInstId" />
+    <result column="TASK_ID" jdbcType="VARCHAR" property="taskId" />
+    <result column="FROM_KEY" jdbcType="VARCHAR" property="fromKey" />
+    <result column="CONTENT" jdbcType="VARCHAR" property="content" />
+    <result column="CREATE_PERSON" jdbcType="VARCHAR" property="createPerson" />
+    <result column="CREATE_TIME" jdbcType="TIMESTAMP" property="createTime" />
+  </resultMap>
+  <sql id="Base_Column_List">
+    ID, PROC_INST_ID, TASK_ID, FROM_KEY, CONTENT, CREATE_PERSON, CREATE_TIME
+  </sql>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from ACT_FROM_CONTENT
+    where ID = #{id,jdbcType=INTEGER}
+  </select>
+
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from ACT_FROM_CONTENT
+    where ID = #{id,jdbcType=INTEGER}
+  </delete>
+  <insert id="insert" keyColumn="ID" keyProperty="id" parameterType="com.guankai.activitidemo.entity.ActFromContent" useGeneratedKeys="true">
+    insert into ACT_FROM_CONTENT (PROC_INST_ID, TASK_ID, FROM_KEY, 
+      CONTENT, CREATE_PERSON, CREATE_TIME
+      )
+    values (#{procInstId,jdbcType=VARCHAR}, #{taskId,jdbcType=VARCHAR}, #{fromKey,jdbcType=VARCHAR}, 
+      #{content,jdbcType=VARCHAR}, #{createPerson,jdbcType=VARCHAR}, #{createTime,jdbcType=TIMESTAMP}
+      )
+  </insert>
+  <insert id="insertSelective" keyColumn="ID" keyProperty="id" parameterType="com.guankai.activitidemo.entity.ActFromContent" useGeneratedKeys="true">
+    insert into ACT_FROM_CONTENT
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="procInstId != null">
+        PROC_INST_ID,
+      </if>
+      <if test="taskId != null">
+        TASK_ID,
+      </if>
+      <if test="fromKey != null">
+        FROM_KEY,
+      </if>
+      <if test="content != null">
+        CONTENT,
+      </if>
+      <if test="createPerson != null">
+        CREATE_PERSON,
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="procInstId != null">
+        #{procInstId,jdbcType=VARCHAR},
+      </if>
+      <if test="taskId != null">
+        #{taskId,jdbcType=VARCHAR},
+      </if>
+      <if test="fromKey != null">
+        #{fromKey,jdbcType=VARCHAR},
+      </if>
+      <if test="content != null">
+        #{content,jdbcType=VARCHAR},
+      </if>
+      <if test="createPerson != null">
+        #{createPerson,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        #{createTime,jdbcType=TIMESTAMP},
+      </if>
+    </trim>
+  </insert>
+  <update id="updateByPrimaryKeySelective" parameterType="com.guankai.activitidemo.entity.ActFromContent">
+    update ACT_FROM_CONTENT
+    <set>
+      <if test="procInstId != null">
+        PROC_INST_ID = #{procInstId,jdbcType=VARCHAR},
+      </if>
+      <if test="taskId != null">
+        TASK_ID = #{taskId,jdbcType=VARCHAR},
+      </if>
+      <if test="fromKey != null">
+        FROM_KEY = #{fromKey,jdbcType=VARCHAR},
+      </if>
+      <if test="content != null">
+        CONTENT = #{content,jdbcType=VARCHAR},
+      </if>
+      <if test="createPerson != null">
+        CREATE_PERSON = #{createPerson,jdbcType=VARCHAR},
+      </if>
+      <if test="createTime != null">
+        CREATE_TIME = #{createTime,jdbcType=TIMESTAMP},
+      </if>
+    </set>
+    where ID = #{id,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.guankai.activitidemo.entity.ActFromContent">
+    update ACT_FROM_CONTENT
+    set PROC_INST_ID = #{procInstId,jdbcType=VARCHAR},
+      TASK_ID = #{taskId,jdbcType=VARCHAR},
+      FROM_KEY = #{fromKey,jdbcType=VARCHAR},
+      CONTENT = #{content,jdbcType=VARCHAR},
+      CREATE_PERSON = #{createPerson,jdbcType=VARCHAR},
+      CREATE_TIME = #{createTime,jdbcType=TIMESTAMP}
+    where ID = #{id,jdbcType=INTEGER}
+  </update>
+
+  <select id="selectByFromKey" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from ACT_FROM_CONTENT
+    <where>
+      <if test="procInstId != null">
+        PROC_INST_ID = #{procInstId,jdbcType=VARCHAR}
+      </if>
+      <if test="taskId != null">
+        TASK_ID = #{taskId,jdbcType=VARCHAR}
+      </if>
+      <if test="fromKey != null">
+        FROM_KEY = #{fromKey,jdbcType=VARCHAR}
+      </if>
+    </where>
+  </select>
+</mapper>

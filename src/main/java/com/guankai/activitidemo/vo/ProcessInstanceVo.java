@@ -1,7 +1,7 @@
 package com.guankai.activitidemo.vo;
 
 /**
- * 类描述：TODO
+ * 类描述：流程实例信息VO
  *
  * @author guankai
  * @date 2020/8/19
@@ -34,6 +34,9 @@ public class ProcessInstanceVo {
 
     /** 流程是否结束 */
     private boolean finished;
+
+    /** 开始节点表单 */
+    private String startFormKey;
 
     public ProcessInstanceVo() {
     }
@@ -108,5 +111,13 @@ public class ProcessInstanceVo {
 
     public void setFinished(boolean finished) {
         this.finished = finished;
+    }
+
+    public String getStartFormKey() {
+        return startFormKey;
+    }
+
+    public void setStartFormKey(String startFormKey) {
+        this.startFormKey = startFormKey;
     }
 }

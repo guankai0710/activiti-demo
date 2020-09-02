@@ -1,121 +1,224 @@
-//package com.guankai.activitidemo.controller;
-//
-//import com.guankai.activitidemo.service.IProcessDefinitionService;
-//import com.guankai.activitidemo.service.IProcessOperateService;
-//import com.guankai.activitidemo.vo.JsonResult;
-//import com.guankai.activitidemo.vo.ProcessInstanceVo;
-//import com.guankai.activitidemo.vo.TaskVo;
-//import org.activiti.engine.HistoryService;
-//import org.activiti.engine.ProcessEngines;
-//import org.activiti.engine.RuntimeService;
-//import org.activiti.engine.history.HistoricProcessInstanceQuery;
-//import org.activiti.engine.repository.ProcessDefinition;
-//import org.activiti.engine.runtime.ProcessInstance;
-//import org.activiti.engine.task.Task;
-//import org.springframework.beans.factory.annotation.Autowired;
-//import org.springframework.web.bind.annotation.GetMapping;
-//import org.springframework.web.bind.annotation.RequestParam;
-//import org.springframework.web.bind.annotation.RestController;
-//
-//import java.io.File;
-//import java.util.List;
-//import java.util.UUID;
-//
-///**
-// * 类描述：TODO
-// *
-// * @author guankai
-// * @date 2020/8/17
-// **/
-//@RestController
-//public class TestController {
-//
-//    @Autowired
-//    private IProcessDefinitionService processDefinitionService;
-//    @Autowired
-//    private IProcessOperateService processOperateService;
-//
-//    @GetMapping("/deployProcess")
-//    public JsonResult deployProcess(){
-//        //部署流程
-//
-//
-//        //部署流程
-//
-//
-//        return null;
-//    }
-//
-//    /**
-//     * 测试
-//     * @return
-//     */
-//    @GetMapping("/startProcess")
-//    public String startProcess(String processDefinitionKey,String businessKey){
-//        //启动流程
-//        ProcessInstanceVo leaveProcess = processOperateService.startProcessByDefinitionId(processDefinitionKey, UUID.randomUUID().toString());
-//
-//        return null;
-//    }
-//
-//    /**
-//     * TODO
-//     *
-//     * @author guankai
-//     * @date 2020/8/19
-//     * @return
-//     **/
-//    @GetMapping("/getProcessDefinitionList")
-//    public JsonResult getProcessDefinitionList(){
-//        return JsonResult.sucess(processDefinitionService.getProcessDefinitionList());
-//    }
-//
-//    @GetMapping("/getTask")
-//    public String getTask(@RequestParam(value = "assignee") String assignee,@RequestParam(value = "processInstanceId") String processInstanceId){
-//        HistoryService historyService = ProcessEngines.getDefaultProcessEngine().getHistoryService();
-//        RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
-//        //未完成流程
-//        List<ProcessInstanceVo> unFinishedProcessList = processOperateService.getUnFinishedProcessList(null);
-//        //已完成流程
-//        List<ProcessInstanceVo> finishedProcessList = processOperateService.getFinishedProcessList(null);
-//
-////        //待办任务
-//        List<TaskVo> taskList = processOperateService.getUpComingTaskList(assignee);
-//        //已办任务
-//        List<TaskVo> doneTaskList = processOperateService.getDoneTaskList(assignee);
-////        当前流程待处理任务
-//        Task activeTask = processOperateService.getCurrentTaskByProcessInstanceId(processInstanceId);
-//
-//
-////        RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
-////        BpmnModel bpmnModel = repositoryService.getBpmnModel(activeTask.getProcessDefinitionId());
-////        UserTask userTask = (UserTask)bpmnModel.getFlowElement(activeTask.getTaskDefinitionKey());
-////        List<SequenceFlow> userTaskOutgoingFlows = userTask.getOutgoingFlows();
-////        userTaskOutgoingFlows.forEach(userTaskSequenceFlow -> {
-////            FlowElement targetFlowElement = userTaskSequenceFlow.getTargetFlowElement();
-////            if (targetFlowElement instanceof ExclusiveGateway){
-////                ExclusiveGateway exclusiveGateway = (ExclusiveGateway) targetFlowElement;
-////                List<SequenceFlow> exclusiveGatewayOutgoingFlows = exclusiveGateway.getOutgoingFlows();
-////                exclusiveGatewayOutgoingFlows.forEach(exclusiveGatewayFlow -> {
-////                    String targetRef = exclusiveGatewayFlow.getTargetRef();
-////                    String conditionExpression = exclusiveGatewayFlow.getConditionExpression();
-////                    System.out.println(conditionExpression);
-////                });
-////            }
-////        });
-//
-//
-////        //当前流程上一节点
-////        if (activeTask != null){
-////            HistoricTaskInstance upOneTask = processOperateService.getUpOneTask(activeTask.getProcessInstanceId(), historyService);
-////        }
-//
-//        return null;
-//    }
-//
-//    @GetMapping("/handleTask")
-//    public String handleTask(@RequestParam(value = "processInstanceId") String processInstanceId){
-//        processOperateService.handleTask(processInstanceId,"","");
-//        return null;
-//    }
-//}
+package com.guankai.activitidemo.controller;
+
+import com.alibaba.fastjson.JSON;
+import com.guankai.activitidemo.dao.ActFromContentDao;
+import com.guankai.activitidemo.entity.ActFromContent;
+import com.guankai.activitidemo.enumerate.StatusEnum;
+import com.guankai.activitidemo.service.IProcessDefinitionService;
+import com.guankai.activitidemo.service.IProcessOperateService;
+import com.guankai.activitidemo.vo.ProcessDefinitionVo;
+import com.guankai.activitidemo.vo.ProcessInstanceVo;
+import com.guankai.activitidemo.vo.TaskVo;
+import org.activiti.engine.task.Task;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.*;
+
+/**
+ * 类描述：TODO
+ *
+ * @author guankai
+ * @date 2020/8/17
+ **/
+@RestController
+@RequestMapping("/activiti")
+public class TestController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TestController.class);
+
+    @Autowired
+    private IProcessOperateService processOperateService;
+    @Autowired
+    private IProcessDefinitionService processDefinitionService;
+    @Autowired
+    private ActFromContentDao actFromContentDao;
+
+    /**
+     * 部署流程
+     *
+     * @param file 流程文件
+     * @author guankai
+     * @date 2020/8/31
+     * @return void
+     **/
+    @GetMapping("/deployProcess")
+    public void deployProcess(MultipartFile file){
+        ProcessDefinitionVo processDefinition1 = processDefinitionService.deployProcess(new File("E:\\processes\\ProcessDemo.bpmn"));
+        System.out.println();
+    }
+
+    /**
+     * 获取已部署的流程
+     */
+    @GetMapping("/getProcessDefinitionList")
+    public void getProcessDefinitionList(){
+        List<ProcessDefinitionVo> processDefinitionList = processDefinitionService.getProcessDefinitionList();
+        System.out.println();
+    }
+
+    /**
+     * 启动流程
+     *
+     * @param processDefinitionId 流程部署信息id
+     * @param startFromJson 开始节点表单数据json字符串
+     * @param businessKey 业务key
+     * @param businessName 业务名称
+     */
+    @GetMapping("/startProcessByDefinitionId")
+    public void startProcessByDefinitionId(String processDefinitionId,String startFromJson,String businessKey, String businessName){
+        //测试数据
+        startFromJson = "{\"alarmContent\":\"大口径水表开关量告警\",\"alarmDuration\":48960,\"alarmTime\":\"2020-05-28 12:07:26\",\"userId\":\"guankai\"}";
+        processDefinitionId = "ProcessDemo:1:ea2a7830-ece1-11ea-a16a-98541b270ceb";
+        businessKey = UUID.randomUUID().toString();
+        businessName = "测试业务";
+
+
+        //解析表单数据
+        HashMap startFromMap = JSON.parseObject(startFromJson, HashMap.class);
+        String nextAssignee = (String)startFromMap.get("userId");
+        if (StringUtils.isBlank(nextAssignee)){
+            System.out.println("启动失败，为指定处理人");
+            return;
+        }
+        startFromMap.remove("userId");
+        //流程发起人
+        String startAssignee = "guankai";
+        //流程变量
+        Map<String,Object> variables = new HashMap<>(16);
+        variables.put("userId",nextAssignee);
+        // 根据不同的开始表单进行不同的业务处理
+        ProcessDefinitionVo processDefinitionVo = processDefinitionService.getByProcessDefinitionId(processDefinitionId);
+        switch (processDefinitionVo.getStartFormKey()){
+            case "leave_start_from":
+                // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
+                //流程状态
+                variables.put("status", StatusEnum.HANDLE.getValue());break;
+            case "easy_start_from":
+                // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
+                //流程状态
+                variables.put("status", StatusEnum.HANDLE.getValue());break;
+            case "test_start_from":
+                // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
+                //流程状态
+                variables.put("status", StatusEnum.REVIEW.getValue());break;
+            default:
+                break;
+        }
+
+        //启动流程
+        ProcessInstanceVo processInstanceVo = processOperateService.startProcessByDefinitionId(processDefinitionId,businessKey,businessName,startAssignee,variables);
+        ActFromContent content = new ActFromContent();
+        content.setProcInstId(processInstanceVo.getId());
+        content.setFromKey(processInstanceVo.getStartFormKey());
+        content.setContent(startFromJson);
+        content.setCreatePerson(startAssignee);
+        content.setCreateTime(new Date());
+        actFromContentDao.insertSelective(content);
+        System.out.println();
+    }
+
+    /**
+     * 获取当前用户待办任务
+     */
+    @GetMapping("/getUpComingTaskList")
+    public void getUpComingTaskList(){
+        String assignee = "guankai";
+        List<TaskVo> taskList = processOperateService.getUpComingTaskList(assignee);
+        System.out.println();
+    }
+
+    /**
+     * 处理流程
+     * @param processInstanceId 流程实例id
+     * @param taskId 任务节点id
+     * @param fromJson 表单数据json字符串
+     */
+    @GetMapping("/handleTask")
+    public void handleTask(String processInstanceId,String taskId, String fromJson){
+        fromJson = "{\"result\":1,\"handleTime\":\"2020-05-28 12:07:26\",\"userId\":\"guankai\",\"handleOpinion\":\"暂无意见\"}";
+        //解析表单数据（包含下一节点处理人、条件表达式变量）
+        HashMap fromMap = JSON.parseObject(fromJson, HashMap.class);
+        String nextAssignee = (String)fromMap.get("userId");
+        if (StringUtils.isBlank(nextAssignee)){
+            System.out.println("处理失败，为指定处理人");
+            return;
+        }
+        //流程变量
+        Map<String,Object> variables = new HashMap<>(16);
+        //当前节点
+        Task currentTask = processOperateService.getCurrentTaskByProcessInstanceId(processInstanceId);
+        if (currentTask == null || !taskId.equals(currentTask.getId())){
+            System.out.println("任务不存在");
+            return;
+        }
+        //根据不同的表单进行不同的业务处理
+        switch (currentTask.getFormKey()){
+            case "leave_leader_handle_form":
+                //流程状态
+                variables.put("status",StatusEnum.REVIEW.getValue());
+                // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
+                ActFromContent content = new ActFromContent();
+                content.setProcInstId(currentTask.getProcessInstanceId());
+                content.setTaskId(currentTask.getId());
+                content.setFromKey(currentTask.getFormKey());
+                content.setContent(fromJson);
+                content.setCreatePerson("guankai");
+                content.setCreateTime(new Date());
+                actFromContentDao.insertSelective(content);
+                break;
+            case "leave_manager_review_form":
+                //流程状态
+                variables.put("status",StatusEnum.COMPLETED.getValue());
+                // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
+                break;
+            case "leave_director_review_form":
+                //流程状态
+                variables.put("status",StatusEnum.COMPLETED.getValue());
+                // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
+                break;
+            default:
+                break;
+        }
+        processOperateService.handleTask(currentTask.getId(),variables,fromMap);
+
+        System.out.println();
+    }
+
+    /**
+     * 获取流程图高亮显示
+     *
+     * @param response 响应体
+     * @param processInstanceId 流程实例id
+     * @author guankai
+     * @date 2020/8/31
+     * @return void
+     **/
+    @GetMapping("/queryProHighLighted")
+    public void queryProHighLighted(HttpServletResponse response,String processInstanceId){
+        try(InputStream is = processOperateService.queryProHighLighted(processInstanceId);
+            OutputStream os = response.getOutputStream()){
+            // 图片文件流缓存池
+            byte [] buffer = new byte[1024];
+            while(is.read(buffer) != -1){
+                os.write(buffer);
+            }
+            os.flush();
+        } catch (IOException ioe){
+            ioe.printStackTrace();
+        }
+    }
+
+
+}

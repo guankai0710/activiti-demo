@@ -1,7 +1,7 @@
 package com.guankai.activitidemo.vo;
 
 /**
- * 类描述：TODO
+ * 类描述：任务节点信息VO
  *
  * @author guankai
  * @date 2020/8/20
@@ -22,6 +22,9 @@ public class TaskVo {
 
     /** 流程实例id */
     private String processInstanceId;
+
+    /** 流程实例名称 */
+    private String processInstanceName;
 
     /** 流程业务key */
     private String businessKey;
@@ -70,6 +73,14 @@ public class TaskVo {
 
     public void setProcessInstanceId(String processInstanceId) {
         this.processInstanceId = processInstanceId;
+    }
+
+    public String getProcessInstanceName() {
+        return processInstanceName;
+    }
+
+    public void setProcessInstanceName(String processInstanceName) {
+        this.processInstanceName = processInstanceName;
     }
 
     public String getBusinessKey() {

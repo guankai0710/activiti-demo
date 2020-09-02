@@ -1,15 +1,16 @@
 package com.guankai.activitidemo.service.impl;
 
 import com.guankai.activitidemo.service.IProcessOperateService;
-import com.guankai.activitidemo.vo.JsonResult;
 import com.guankai.activitidemo.vo.ProcessInstanceVo;
 import com.guankai.activitidemo.vo.TaskVo;
-import org.activiti.bpmn.model.BpmnModel;
+import org.activiti.bpmn.model.*;
 import org.activiti.engine.*;
+import org.activiti.engine.history.HistoricActivityInstance;
 import org.activiti.engine.history.HistoricProcessInstance;
 import org.activiti.engine.history.HistoricProcessInstanceQuery;
 import org.activiti.engine.history.HistoricTaskInstance;
 import org.activiti.engine.impl.identity.Authentication;
+import org.activiti.engine.repository.ProcessDefinition;
 import org.activiti.engine.runtime.ProcessInstance;
 import org.activiti.engine.runtime.ProcessInstanceQuery;
 import org.activiti.engine.task.Task;
@@ -23,22 +24,22 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 类描述：流程操作接口
- *  流程启动、等
+ *  流程启动、查询、处理等
  *
  * @author guankai
  * @date 2020/8/17
  **/
 @Service
-@Transactional(rollbackFor = Exception.class)
 public class ProcessOperateServiceImpl implements IProcessOperateService {
     private static final Logger LOG = LoggerFactory.getLogger(ProcessOperateServiceImpl.class);
 
@@ -48,27 +49,28 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      *
      * @param processDefinitionId 流程定义id
      * @param businessKey 业务编号
-     * @param userId 流程发起者
+     * @param startUserId 流程发起者
      * @param variables 流程变量
      * @author guan.kai
      * @date 2020/8/17
      * @return
      **/
     @Override
-    public ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String userId, Map<String,Object> variables) {
+    @Transactional(rollbackFor = Exception.class)
+    public ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String businessName, String startUserId, Map<String,Object> variables) {
         RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
-        if (StringUtils.isNotBlank(userId)){
+        if (StringUtils.isNotBlank(startUserId)){
             //设置流程发起者信息（一般是当前用户id或者用户名等唯一标识）
-            Authentication.setAuthenticatedUserId(userId);
+            Authentication.setAuthenticatedUserId(startUserId);
         }
         //启动流程，返回流程实例信息
         ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefinitionId,businessKey,variables);
+        runtimeService.setProcessInstanceName(processInstance.getProcessInstanceId(),businessName);
         //设置流程实例名称
-        runtimeService.setProcessInstanceName(processInstance.getId(),"实例名称");
         LOG.info("启动流程 -> 流程key：{}，流程名称：{}，业务编号：{}，实例id：{}"
                 ,processInstance.getProcessDefinitionKey(),processInstance.getProcessDefinitionName()
                 ,processInstance.getBusinessKey(),processInstance.getProcessInstanceId());
-        return processInstanceToVo(processInstance);
+        return processInstanceToVo(processInstance,ProcessEngines.getDefaultProcessEngine().getRepositoryService());
     }
 
     /**
@@ -89,10 +91,10 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
             query = query.startedBy(userId);
         }
         List<ProcessInstance> list = query.list();
-        if (list.isEmpty()){
+        if (list == null || list.isEmpty()){
             return null;
         }
-        list.forEach(processInstance -> voList.add(processInstanceToVo(processInstance)));
+        list.forEach(processInstance -> voList.add(processInstanceToVo(processInstance,ProcessEngines.getDefaultProcessEngine().getRepositoryService())));
         return voList;
     }
 
@@ -114,14 +116,14 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
             query = query.startedBy(userId);
         }
         List<HistoricProcessInstance> list = query.finished().orderByProcessInstanceEndTime().desc().list();
-        if (list.isEmpty()){
+        if (list == null || list.isEmpty()){
             return null;
         }
-        list.forEach(historicProcessInstance -> voList.add(processInstanceToVo(historicProcessInstance)));
+        list.forEach(historicProcessInstance -> voList.add(processInstanceToVo(historicProcessInstance,ProcessEngines.getDefaultProcessEngine().getRepositoryService())));
         return voList;
     }
 
-    private ProcessInstanceVo processInstanceToVo(Object obj) {
+    private ProcessInstanceVo processInstanceToVo(Object obj,RepositoryService repositoryService) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         ProcessInstanceVo vo = new ProcessInstanceVo();
         if (obj instanceof HistoricProcessInstance){
@@ -130,20 +132,33 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
             vo.setStartTime(sdf.format(process.getStartTime()));
             vo.setEndTime(sdf.format(process.getEndTime()));
             vo.setFinished(true);
+            processInstanceVoSetStartFormKey(vo,process.getProcessDefinitionId(),repositoryService);
         } else if (obj instanceof ProcessInstance) {
             ProcessInstance process = (ProcessInstance)obj;
             BeanUtils.copyProperties(process,vo);
             vo.setStartTime(sdf.format(process.getStartTime()));
             vo.setEndTime(null);
             vo.setFinished(false);
+            processInstanceVoSetStartFormKey(vo,process.getProcessDefinitionId(),repositoryService);
         } else {
             try {
                 throw new Exception("参数错误！");
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.error(e.getMessage(),e);
             }
         }
         return vo;
+    }
+
+    private void processInstanceVoSetStartFormKey(ProcessInstanceVo vo,String processDefinitionId,RepositoryService repositoryService){
+        ProcessDefinition processDefinition = repositoryService.getProcessDefinition(processDefinitionId);
+        BpmnModel bpmnModel = repositoryService.getBpmnModel(processDefinitionId);
+        Map<String, FlowElement> flowElementMap = bpmnModel.getProcessById(processDefinition.getKey()).getFlowElementMap();
+        StartEvent startevent = (StartEvent)flowElementMap.get("startevent");
+        String formKey = startevent.getFormKey();
+        if (StringUtils.isNotBlank(formKey)){
+            vo.setStartFormKey(formKey);
+        }
     }
 
     /**
@@ -157,16 +172,17 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
     @Override
     public List<TaskVo> getUpComingTaskList(String assignee) {
         TaskService taskService = ProcessEngines.getDefaultProcessEngine().getTaskService();
+        RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
         List<Task> taskList = taskService.createTaskQuery()
                 .taskAssignee(assignee)
                 .orderByTaskCreateTime()
                 .asc()
                 .list();
-        if (taskList.isEmpty()){
+        if (taskList == null || taskList.isEmpty()){
             return null;
         }
         List<TaskVo> voList = new ArrayList<>(taskList.size());
-        taskList.forEach(task -> voList.add(taskToVo(task)));
+        taskList.forEach(task -> voList.add(taskToVo(task,runtimeService)));
         return voList;
     }
 
@@ -181,23 +197,26 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
     @Override
     public List<TaskVo> getDoneTaskList(String assignee) {
         HistoryService historyService = ProcessEngines.getDefaultProcessEngine().getHistoryService();
+        RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
         List<HistoricTaskInstance> taskInstanceList = historyService.createHistoricTaskInstanceQuery()
                 .finished()
                 .taskAssignee(assignee)
                 .orderByHistoricTaskInstanceEndTime()
                 .desc()
                 .list();
-        if (taskInstanceList.isEmpty()){
+        if (taskInstanceList == null || taskInstanceList.isEmpty()){
             return null;
         }
         List<TaskVo> voList = new ArrayList<>(taskInstanceList.size());
-        taskInstanceList.forEach(historicTaskInstance -> voList.add(taskToVo(historicTaskInstance)));
+        taskInstanceList.forEach(historicTaskInstance -> voList.add(taskToVo(historicTaskInstance,runtimeService)));
         return voList;
     }
 
-    private TaskVo taskToVo(TaskInfo taskInfo){
+    private TaskVo taskToVo(TaskInfo taskInfo,RuntimeService runtimeService){
         TaskVo vo = new TaskVo();
         BeanUtils.copyProperties(taskInfo,vo);
+        ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().processInstanceId(taskInfo.getProcessInstanceId()).singleResult();
+        vo.setProcessInstanceName(processInstance.getName());
         return vo;
     }
 
@@ -232,7 +251,7 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
                 .orderByHistoricTaskInstanceEndTime()
                 .desc()
                 .list();
-        return (list.isEmpty())?null:list.get(0);
+        return (list == null || list.isEmpty())?null:list.get(0);
     }
 
     /**
@@ -246,111 +265,76 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * @return
      **/
     @Override
-    public JsonResult handleTask(String taskId, Map<String,Object> variables, Map<String,Object> variablesLocal) {
+    @Transactional(rollbackFor = Exception.class)
+    public void handleTask(String taskId, Map<String,Object> variables, Map<String,Object> variablesLocal) {
         TaskService taskService = ProcessEngines.getDefaultProcessEngine().getTaskService();
-
-//        BpmnModel bpmnModel = repositoryService.getBpmnModel(currentTask.getProcessDefinitionId());
-        //当前节点流信息
-//        UserTask userTask = (UserTask)bpmnModel.getFlowElement(currentTask.getTaskDefinitionKey());
-//        SequenceFlow userTaskSequenceFlow = userTask.getOutgoingFlows().get(0);
-//        FlowElement targetFlowElement = userTaskSequenceFlow.getTargetFlowElement();
-//        //判断下一节点是否为网关
-//        if (targetFlowElement instanceof ExclusiveGateway){
-//            ExclusiveGateway exclusiveGateway = (ExclusiveGateway) targetFlowElement;
-//            List<SequenceFlow> exclusiveGatewayOutgoingFlows = exclusiveGateway.getOutgoingFlows();
-//            exclusiveGatewayOutgoingFlows.forEach(exclusiveGatewayFlow -> {
-//                //条件表达式
-//                String conditionExpression = exclusiveGatewayFlow.getConditionExpression();
-//
-//            });
-//        }
-        if (!variables.isEmpty()){
+        if (variables != null && !variables.isEmpty()){
             taskService.setVariables(taskId,variables);
         }
-        if (!variablesLocal.isEmpty()){
+        if (variablesLocal != null && !variablesLocal.isEmpty()){
             taskService.setVariablesLocal(taskId,variablesLocal);
         }
         taskService.complete(taskId);
-        return JsonResult.sucess("处理成功！",null);
     }
-
-//    /**
-//     * 封装自定义节点信息
-//     *
-//     * @param task 节点信息
-//     * @author guankai
-//     * @date 2020/8/17
-//     * @return com.guankai.activitidemo.model.LeaveTask
-//     **/
-//    private LeaveTask setLeaveTask(Task task){
-//        LeaveTask leaveTask = new LeaveTask();
-//        leaveTask.setProcessDefinitionId(task.getProcessDefinitionId());
-//        leaveTask.setProcessInstanceId(task.getProcessInstanceId());
-//        leaveTask.setTaskId(task.getId());
-//        leaveTask.setTaskDefinitionKey(task.getTaskDefinitionKey());
-//        leaveTask.setTaskName(task.getName());
-//        leaveTask.setAssignee(task.getAssignee());
-//        leaveTask.setFormKey(task.getFormKey());
-//        //获取当前模型
-//        BpmnModel bpmnModel = ProcessEngines.getDefaultProcessEngine().getRepositoryService().getBpmnModel(task.getProcessDefinitionId());
-//        //获取当前节点
-//        FlowElement flowElement = bpmnModel.getFlowElement(task.getTaskDefinitionKey());
-//        //判断节点类型(常用节点类型)
-//        if (flowElement instanceof StartEvent){
-//            //开始节点
-//            StartEvent startEvent = (StartEvent)flowElement;
-//            leaveTask.setIncomingFlows(startEvent.getIncomingFlows());
-//            leaveTask.setOutgoingFlows(startEvent.getOutgoingFlows());
-//            leaveTask.setTaskType(StartEvent.class);
-//        }else if (flowElement instanceof UserTask){
-//            //任务节点
-//            UserTask userTask = (UserTask)flowElement;
-//            leaveTask.setIncomingFlows(userTask.getIncomingFlows());
-//            leaveTask.setOutgoingFlows(userTask.getOutgoingFlows());
-//            leaveTask.setTaskType(UserTask.class);
-//        }else if (flowElement instanceof ExclusiveGateway){
-//            //排他网关节点
-//            ExclusiveGateway exclusiveGateway = (ExclusiveGateway)flowElement;
-//            leaveTask.setIncomingFlows(exclusiveGateway.getIncomingFlows());
-//            leaveTask.setOutgoingFlows(exclusiveGateway.getOutgoingFlows());
-//            leaveTask.setTaskType(ExclusiveGateway.class);
-//        }else if (flowElement instanceof EndEvent){
-//            //结束节点
-//            EndEvent endEvent = (EndEvent)flowElement;
-//            leaveTask.setIncomingFlows(endEvent.getIncomingFlows());
-//            leaveTask.setOutgoingFlows(endEvent.getOutgoingFlows());
-//            leaveTask.setTaskType(EndEvent.class);
-//        }else {
-//            leaveTask.setTaskType(null);
-//        }
-//        return leaveTask;
-//    }
-
 
     /**
      * 返回流程图
      *
      * @param processInstanceId 流程实例id
-     * @param highlight 是否高亮显示
      * @return
      */
     @Override
-    public InputStream queryProHighLighted(String processInstanceId,boolean highlight) {
+    public InputStream queryProHighLighted(String processInstanceId) throws IOException {
         RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
         RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
+        HistoryService historyService = ProcessEngines.getDefaultProcessEngine().getHistoryService();
         ProcessInstance processInstance = runtimeService.createProcessInstanceQuery().processInstanceId(processInstanceId).singleResult();
         if (processInstance != null){
             BpmnModel model = repositoryService.getBpmnModel(processInstance.getProcessDefinitionId());
             if (model != null && model.getLocationMap().size() > 0) {
                 ProcessDiagramGenerator generator = new DefaultProcessDiagramGenerator();
-                // 生成流程图 已启动的task 高亮显示
-                return generator.generateDiagram(model, highlight?runtimeService.getActiveActivityIds(processInstanceId):Collections.<String>emptyList());
-                // 生成流程图 都不高亮
-//                return generator.generateDiagram(model, Collections.<String>emptyList());
-            }
+                List<String> executedTaskIdList = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstanceId).list()
+                        .stream().map(HistoricTaskInstance::getTaskDefinitionKey).collect(Collectors.toList());
+                executedTaskIdList.add("startevent");
+                //已执行flow的集和
+                List<String> executedFlowIdList = executedFlowIdList(model,
+                        historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstanceId).list());
 
+                return generator.generateDiagram(model, executedTaskIdList, executedFlowIdList, "宋体", "宋体",
+                        "宋体", true);
+            }
         }
         return null;
     }
+
+    /**
+     * 获取已执行flow的集和
+     *
+     * @param bpmnModel
+     * @param historicActivityInstanceList
+     * @author guankai
+     * @date 2020/8/28
+     * @return
+     **/
+    private List<String> executedFlowIdList(BpmnModel bpmnModel,List<HistoricActivityInstance> historicActivityInstanceList) {
+        List<String> executedFlowIdList = new ArrayList<>();
+        for(int i=0;i<historicActivityInstanceList.size()-1;i++) {
+            HistoricActivityInstance hai = historicActivityInstanceList.get(i);
+            FlowNode flowNode = (FlowNode) bpmnModel.getFlowElement(hai.getActivityId());
+            List<SequenceFlow> sequenceFlows = flowNode.getOutgoingFlows();
+            if(sequenceFlows.size()>1) {
+                HistoricActivityInstance nextHai = historicActivityInstanceList.get(i+1);
+                sequenceFlows.forEach(sequenceFlow->{
+                    if(sequenceFlow.getTargetFlowElement().getId().equals(nextHai.getActivityId())) {
+                        executedFlowIdList.add(sequenceFlow.getId());
+                    }
+                });
+            }else {
+                executedFlowIdList.add(sequenceFlows.get(0).getId());
+            }
+        }
+        return executedFlowIdList;
+    }
+
 
 }
