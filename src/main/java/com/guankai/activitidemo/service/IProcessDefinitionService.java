@@ -1,6 +1,7 @@
 package com.guankai.activitidemo.service;
 
 import com.guankai.activitidemo.vo.ProcessDefinitionVo;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.util.List;
@@ -21,7 +22,7 @@ public interface IProcessDefinitionService {
      * @date 2020/8/18
      * @return
      **/
-    ProcessDefinitionVo deployProcess(File file);
+    ProcessDefinitionVo deployProcess(MultipartFile file);
 
     /**
      * 查询以部署流程列表信息

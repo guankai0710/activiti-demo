@@ -23,35 +23,35 @@ public interface IProcessOperateService {
      *
      * @param processDefinitionId 流程定义id
      * @param businessKey 业务编号
-     * @param startUserId 流程发起者
+     * @param startUser 流程发起者
      * @param variables 流程变量
      * @author guan.kai
      * @date 2020/8/17
      * @return
      **/
-    ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String businessName, String startUserId,  Map<String,Object> variables);
+    ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String businessName, String startUser,  Map<String,Object> variables);
 
     /**
      * 获取未完结流程列表
      * 当userId为空时查询所有
      *
-     * @param userId 流程发起人
+     * @param startUser 流程发起人
      * @auhor guankai
      * @date 2020/8/18
      * @return
      **/
-    List<ProcessInstanceVo> getUnFinishedProcessList(String userId);
+    List<ProcessInstanceVo> getUnFinishedProcessList(String startUser);
 
     /**
      * 获取已完结流程列表
      * 当userId为空时查询所有
      *
-     * @param userId 流程发起人
+     * @param startUser 流程发起人
      * @author guankai
      * @date 2020/8/18
      * @return
      **/
-    List<ProcessInstanceVo> getFinishedProcessList(String userId);
+    List<ProcessInstanceVo> getFinishedProcessList(String startUser);
 
     /**
      * 根据处理人获取待办任务列表

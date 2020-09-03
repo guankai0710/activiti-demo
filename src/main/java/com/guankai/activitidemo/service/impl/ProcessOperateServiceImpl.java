@@ -49,7 +49,7 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      *
      * @param processDefinitionId 流程定义id
      * @param businessKey 业务编号
-     * @param startUserId 流程发起者
+     * @param startUser 流程发起者
      * @param variables 流程变量
      * @author guan.kai
      * @date 2020/8/17
@@ -57,11 +57,11 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      **/
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String businessName, String startUserId, Map<String,Object> variables) {
+    public ProcessInstanceVo startProcessByDefinitionId(String processDefinitionId, String businessKey, String businessName, String startUser, Map<String,Object> variables) {
         RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
-        if (StringUtils.isNotBlank(startUserId)){
+        if (StringUtils.isNotBlank(startUser)){
             //设置流程发起者信息（一般是当前用户id或者用户名等唯一标识）
-            Authentication.setAuthenticatedUserId(startUserId);
+            Authentication.setAuthenticatedUserId(startUser);
         }
         //启动流程，返回流程实例信息
         ProcessInstance processInstance = runtimeService.startProcessInstanceById(processDefinitionId,businessKey,variables);
@@ -77,18 +77,18 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * 获取所有未完结流程列表
      * 当userId为空时查询所有
      *
-     * @param userId 流程发起人
+     * @param startUser 流程发起人
      * @auhor guankai
      * @date 2020/8/18
      * @return
      **/
     @Override
-    public List<ProcessInstanceVo> getUnFinishedProcessList(String userId) {
+    public List<ProcessInstanceVo> getUnFinishedProcessList(String startUser) {
         List<ProcessInstanceVo> voList = new ArrayList<>();
         RuntimeService runtimeService = ProcessEngines.getDefaultProcessEngine().getRuntimeService();
         ProcessInstanceQuery query = runtimeService.createProcessInstanceQuery();
-        if (StringUtils.isNotBlank(userId)){
-            query = query.startedBy(userId);
+        if (StringUtils.isNotBlank(startUser)){
+            query = query.startedBy(startUser);
         }
         List<ProcessInstance> list = query.list();
         if (list == null || list.isEmpty()){
@@ -102,18 +102,18 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
      * 获取已完结流程列表
      * 当userId为空时查询所有
      *
-     * @param userId 流程发起人
+     * @param startUser 流程发起人
      * @author guankai
      * @date 2020/8/18
      * @return
      **/
     @Override
-    public List<ProcessInstanceVo> getFinishedProcessList(String userId) {
+    public List<ProcessInstanceVo> getFinishedProcessList(String startUser) {
         List<ProcessInstanceVo> voList = new ArrayList<>();
         HistoryService historyService = ProcessEngines.getDefaultProcessEngine().getHistoryService();
         HistoricProcessInstanceQuery query = historyService.createHistoricProcessInstanceQuery();
-        if (StringUtils.isNotBlank(userId)){
-            query = query.startedBy(userId);
+        if (StringUtils.isNotBlank(startUser)){
+            query = query.startedBy(startUser);
         }
         List<HistoricProcessInstance> list = query.finished().orderByProcessInstanceEndTime().desc().list();
         if (list == null || list.isEmpty()){
@@ -292,14 +292,14 @@ public class ProcessOperateServiceImpl implements IProcessOperateService {
         if (processInstance != null){
             BpmnModel model = repositoryService.getBpmnModel(processInstance.getProcessDefinitionId());
             if (model != null && model.getLocationMap().size() > 0) {
-                ProcessDiagramGenerator generator = new DefaultProcessDiagramGenerator();
-                List<String> executedTaskIdList = historyService.createHistoricTaskInstanceQuery().processInstanceId(processInstanceId).list()
-                        .stream().map(HistoricTaskInstance::getTaskDefinitionKey).collect(Collectors.toList());
-                executedTaskIdList.add("startevent");
+                //已执行节点集合
+                List<String> executedTaskIdList = historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstanceId).list()
+                                            .stream().map(HistoricActivityInstance::getActivityId).collect(Collectors.toList());
                 //已执行flow的集和
                 List<String> executedFlowIdList = executedFlowIdList(model,
-                        historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstanceId).list());
+                                            historyService.createHistoricActivityInstanceQuery().processInstanceId(processInstanceId).list());
 
+                ProcessDiagramGenerator generator = new DefaultProcessDiagramGenerator();
                 return generator.generateDiagram(model, executedTaskIdList, executedFlowIdList, "宋体", "宋体",
                         "宋体", true);
             }

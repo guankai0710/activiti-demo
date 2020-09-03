@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,9 +45,9 @@ public class ProcessDefinitionServiceImpl implements IProcessDefinitionService {
      **/
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ProcessDefinitionVo deployProcess(File file) {
-        try(InputStream inputStream = new FileInputStream(file)) {
-            String filename = file.getName();
+    public ProcessDefinitionVo deployProcess(MultipartFile file) {
+        try(InputStream inputStream = file.getInputStream()) {
+            String filename = file.getOriginalFilename();
             RepositoryService repositoryService = ProcessEngines.getDefaultProcessEngine().getRepositoryService();
             //部署
             Deployment deployment = repositoryService.createDeployment().addInputStream(filename, inputStream).deploy();

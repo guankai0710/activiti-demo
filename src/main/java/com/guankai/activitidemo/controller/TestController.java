@@ -6,6 +6,7 @@ import com.guankai.activitidemo.entity.ActFromContent;
 import com.guankai.activitidemo.enumerate.StatusEnum;
 import com.guankai.activitidemo.service.IProcessDefinitionService;
 import com.guankai.activitidemo.service.IProcessOperateService;
+import com.guankai.activitidemo.vo.JsonResult;
 import com.guankai.activitidemo.vo.ProcessDefinitionVo;
 import com.guankai.activitidemo.vo.ProcessInstanceVo;
 import com.guankai.activitidemo.vo.TaskVo;
@@ -15,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -53,19 +55,20 @@ public class TestController {
      * @date 2020/8/31
      * @return void
      **/
-    @GetMapping("/deployProcess")
-    public void deployProcess(MultipartFile file){
-        ProcessDefinitionVo processDefinition1 = processDefinitionService.deployProcess(new File("E:\\processes\\ProcessDemo.bpmn"));
-        System.out.println();
+    @PostMapping("/deployProcess")
+    public JsonResult deployProcess(MultipartFile file){
+//        ProcessDefinitionVo processDefinition = processDefinitionService.deployProcess(new File("E:\\processes\\ProcessDemo.bpmn"));
+        ProcessDefinitionVo processDefinition = processDefinitionService.deployProcess(file);
+        return JsonResult.sucess(processDefinition);
     }
 
     /**
      * 获取已部署的流程
      */
     @GetMapping("/getProcessDefinitionList")
-    public void getProcessDefinitionList(){
+    public JsonResult getProcessDefinitionList(){
         List<ProcessDefinitionVo> processDefinitionList = processDefinitionService.getProcessDefinitionList();
-        System.out.println();
+        return JsonResult.sucess(processDefinitionList);
     }
 
     /**
@@ -76,21 +79,20 @@ public class TestController {
      * @param businessKey 业务key
      * @param businessName 业务名称
      */
-    @GetMapping("/startProcessByDefinitionId")
-    public void startProcessByDefinitionId(String processDefinitionId,String startFromJson,String businessKey, String businessName){
+    @PostMapping("/startProcessByDefinitionId")
+    public JsonResult startProcessByDefinitionId(String processDefinitionId,String startFromJson,String businessKey, String businessName){
         //测试数据
-        startFromJson = "{\"alarmContent\":\"大口径水表开关量告警\",\"alarmDuration\":48960,\"alarmTime\":\"2020-05-28 12:07:26\",\"userId\":\"guankai\"}";
-        processDefinitionId = "ProcessDemo:1:ea2a7830-ece1-11ea-a16a-98541b270ceb";
-        businessKey = UUID.randomUUID().toString();
-        businessName = "测试业务";
+//        startFromJson = "{\"alarmContent\":\"大口径水表开关量告警\",\"alarmDuration\":48960,\"alarmTime\":\"2020-05-28 12:07:26\",\"userId\":\"guankai\"}";
+//        processDefinitionId = "ProcessDemo:1:ea2a7830-ece1-11ea-a16a-98541b270ceb";
+//        businessKey = UUID.randomUUID().toString();
+//        businessName = "测试业务";
 
 
         //解析表单数据
         HashMap startFromMap = JSON.parseObject(startFromJson, HashMap.class);
         String nextAssignee = (String)startFromMap.get("userId");
         if (StringUtils.isBlank(nextAssignee)){
-            System.out.println("启动失败，为指定处理人");
-            return;
+            return JsonResult.failure("启动失败，为指定处理人");
         }
         startFromMap.remove("userId");
         //流程发起人
@@ -126,17 +128,18 @@ public class TestController {
         content.setCreatePerson(startAssignee);
         content.setCreateTime(new Date());
         actFromContentDao.insertSelective(content);
-        System.out.println();
+
+        return JsonResult.sucess(processInstanceVo);
     }
 
     /**
      * 获取当前用户待办任务
      */
     @GetMapping("/getUpComingTaskList")
-    public void getUpComingTaskList(){
+    public JsonResult getUpComingTaskList(){
         String assignee = "guankai";
         List<TaskVo> taskList = processOperateService.getUpComingTaskList(assignee);
-        System.out.println();
+        return JsonResult.sucess(taskList);
     }
 
     /**
@@ -145,27 +148,25 @@ public class TestController {
      * @param taskId 任务节点id
      * @param fromJson 表单数据json字符串
      */
-    @GetMapping("/handleTask")
-    public void handleTask(String processInstanceId,String taskId, String fromJson){
-        fromJson = "{\"result\":1,\"handleTime\":\"2020-05-28 12:07:26\",\"userId\":\"guankai\",\"handleOpinion\":\"暂无意见\"}";
+    @PostMapping("/handleTask")
+    public JsonResult handleTask(String processInstanceId,String taskId, String fromJson){
+//        fromJson = "{\"result\":1,\"handleTime\":\"2020-05-28 12:07:26\",\"userId\":\"guankai\",\"handleOpinion\":\"暂无意见\"}";
         //解析表单数据（包含下一节点处理人、条件表达式变量）
         HashMap fromMap = JSON.parseObject(fromJson, HashMap.class);
         String nextAssignee = (String)fromMap.get("userId");
         if (StringUtils.isBlank(nextAssignee)){
-            System.out.println("处理失败，为指定处理人");
-            return;
+            return JsonResult.failure("处理失败，为指定处理人");
         }
         //流程变量
         Map<String,Object> variables = new HashMap<>(16);
         //当前节点
         Task currentTask = processOperateService.getCurrentTaskByProcessInstanceId(processInstanceId);
         if (currentTask == null || !taskId.equals(currentTask.getId())){
-            System.out.println("任务不存在");
-            return;
+            return JsonResult.failure("任务不存在");
         }
         //根据不同的表单进行不同的业务处理
         switch (currentTask.getFormKey()){
-            case "leave_leader_handle_form":
+            case "demo_review_from":
                 //流程状态
                 variables.put("status",StatusEnum.REVIEW.getValue());
                 // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
@@ -177,6 +178,16 @@ public class TestController {
                 content.setCreatePerson("guankai");
                 content.setCreateTime(new Date());
                 actFromContentDao.insertSelective(content);
+                break;
+            case "demo_handle_from":
+                //流程状态
+                variables.put("status",StatusEnum.REVIEW.getValue());
+                // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
+                break;
+            case "leave_leader_handle_form":
+                //流程状态
+                variables.put("status",StatusEnum.REVIEW.getValue());
+                // TODO 根据 businessKey 修改对应的业务数据，比如业务表中的流程状态等
                 break;
             case "leave_manager_review_form":
                 //流程状态
@@ -193,7 +204,7 @@ public class TestController {
         }
         processOperateService.handleTask(currentTask.getId(),variables,fromMap);
 
-        System.out.println();
+        return JsonResult.sucess();
     }
 
     /**
